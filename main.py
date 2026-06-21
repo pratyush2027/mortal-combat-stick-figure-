@@ -11,7 +11,6 @@ Run:
 
 from __future__ import annotations
 
-import asyncio
 import math
 import random
 from collections import deque
@@ -1080,23 +1079,64 @@ class Game:
         self.screen.blit(shadow, rect.move(4, 5))
         self.screen.blit(img, rect)
 
+    def draw_keycap(self, label: str, center: Tuple[int, int], accent: Tuple[int, int, int], width: int = 46) -> None:
+        """Draw a prominent keyboard-style keycap for the title control screen."""
+        rect = pygame.Rect(0, 0, width, 36)
+        rect.center = center
+        shadow = rect.move(0, 4)
+        pygame.draw.rect(self.screen, (8, 10, 20), shadow, border_radius=10)
+        pygame.draw.rect(self.screen, COLORS["white"], rect, border_radius=10)
+        pygame.draw.rect(self.screen, accent, rect, 2, border_radius=10)
+        draw_text(self.screen, self.fonts["small"], label, rect.center, (20, 24, 42), "center")
+
+    def draw_control_column(self, x: int, y: int, heading: str, accent: Tuple[int, int, int], rows: List[Tuple[str, List[str]]]) -> None:
+        panel = pygame.Rect(x, y, 510, 386)
+        pygame.draw.rect(self.screen, (11, 16, 34), panel, border_radius=22)
+        pygame.draw.rect(self.screen, accent, panel, 2, border_radius=22)
+        draw_text(self.screen, self.fonts["small"], heading, (x + 28, y + 20), accent)
+        draw_text(self.screen, self.fonts["tiny"], "GAMEPLAY", (x + 28, y + 52), COLORS["muted"])
+
+        row_y = y + 88
+        for label, keys in rows:
+            draw_text(self.screen, self.fonts["small"], label, (x + 28, row_y + 1), COLORS["text"])
+            cap_x = x + 420 - (len(keys) - 1) * 27
+            for key in keys:
+                self.draw_keycap(key, (cap_x, row_y + 12), accent, 48 if len(key) == 1 else 58)
+                cap_x += 54
+            row_y += 31
+
     def draw_title(self) -> None:
         self.draw_background()
-        title_font = self.fonts["huge"]
-        draw_text(self.screen, title_font, "MORTAL", (WIDTH // 2, 135), COLORS["gold"], "midtop", True)
-        draw_text(self.screen, title_font, "COMBAT REBORN", (WIDTH // 2, 224), COLORS["red"], "midtop", True)
-        draw_text(self.screen, self.fonts["medium"], "ORIGINAL 2D ARENA FIGHTER", (WIDTH // 2, 330), COLORS["cyan"], "midtop")
+        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        overlay.fill((5, 8, 20, 92))
+        self.screen.blit(overlay, (0, 0))
 
-        panel = pygame.Rect(WIDTH // 2 - 350, 395, 700, 210)
-        pygame.draw.rect(self.screen, (13, 18, 38), panel, border_radius=20)
-        pygame.draw.rect(self.screen, (77, 105, 154), panel, 2, border_radius=20)
-        draw_text(self.screen, self.fonts["medium"], "1  —  VS CPU", (WIDTH // 2, 430), COLORS["text"], "midtop")
-        draw_text(self.screen, self.fonts["medium"], "2  —  LOCAL TWO PLAYER", (WIDTH // 2, 474), COLORS["text"], "midtop")
-        draw_text(self.screen, self.fonts["small"], "CHOOSE FIGHT TYPE, THEN CHOOSE AN ARENA", (WIDTH // 2, 522), COLORS["muted"], "midtop")
-        draw_text(self.screen, self.fonts["tiny"], "ESC  —  EXIT", (WIDTH // 2, 552), COLORS["muted"], "midtop")
-        draw_text(self.screen, self.fonts["tiny"], "P1: WASD move • F punch • R kick • Q parry/block • T grab • E super", (WIDTH // 2, 632), COLORS["muted"], "midtop")
-        draw_text(self.screen, self.fonts["tiny"], "P2: Arrow keys move • P punch • K kick • M parry/block • O grab • L super", (WIDTH // 2, 654), COLORS["muted"], "midtop")
-        draw_text(self.screen, self.fonts["tiny"], "F / P = punch • R / K = kick • E / L = super • ESC = main menu", (WIDTH // 2, 678), COLORS["purple"], "midtop")
+        draw_text(self.screen, self.fonts["large"], "MORTAL COMBAT REBORN", (WIDTH // 2, 34), COLORS["gold"], "midtop", True)
+        draw_text(self.screen, self.fonts["small"], "ORIGINAL STICKMAN ARENA FIGHTER", (WIDTH // 2, 98), COLORS["cyan"], "midtop")
+
+        mode_panel = pygame.Rect(WIDTH // 2 - 350, 132, 700, 78)
+        pygame.draw.rect(self.screen, (13, 18, 38), mode_panel, border_radius=18)
+        pygame.draw.rect(self.screen, (77, 105, 154), mode_panel, 2, border_radius=18)
+        self.draw_keycap("1", (WIDTH // 2 - 250, 171), COLORS["cyan"])
+        draw_text(self.screen, self.fonts["small"], "VS CPU", (WIDTH // 2 - 205, 171), COLORS["text"], "midleft")
+        self.draw_keycap("2", (WIDTH // 2 + 75, 171), COLORS["magenta"])
+        draw_text(self.screen, self.fonts["small"], "LOCAL TWO PLAYER", (WIDTH // 2 + 120, 171), COLORS["text"], "midleft")
+        draw_text(self.screen, self.fonts["tiny"], "PRESS 1 OR 2 TO CHOOSE MODE  •  ESC TO EXIT", (WIDTH // 2, 218), COLORS["muted"], "midtop")
+
+        draw_text(self.screen, self.fonts["medium"], "KEYBOARD CONFIG", (WIDTH // 2, 244), COLORS["purple"], "midtop", True)
+        draw_text(self.screen, self.fonts["tiny"], "ALL ATTACK KEYS ARE DIRECT: NO COMBO INPUTS REQUIRED", (WIDTH // 2, 279), COLORS["muted"], "midtop")
+
+        p1_rows = [
+            ("Left", ["A"]), ("Right", ["D"]), ("Jump", ["W"]), ("Crouch", ["S"]),
+            ("Punch", ["F"]), ("Kick", ["R"]), ("Grab", ["T"]), ("Parry / Block", ["Q"]), ("Super", ["E"]),
+        ]
+        p2_rows = [
+            ("Left", ["←"]), ("Right", ["→"]), ("Jump", ["↑"]), ("Crouch", ["↓"]),
+            ("Punch", ["P"]), ("Kick", ["K"]), ("Grab", ["O"]), ("Parry / Block", ["M"]), ("Super", ["L"]),
+        ]
+        self.draw_control_column(108, 300, "PLAYER 1", COLORS["cyan"], p1_rows)
+        self.draw_control_column(662, 300, "PLAYER 2", COLORS["magenta"], p2_rows)
+        draw_text(self.screen, self.fonts["tiny"], "DOUBLE-TAP LEFT OR RIGHT TO DASH  •  TAP PARRY AT IMPACT TO COUNTER  •  HOLD PARRY TO BLOCK", (WIDTH // 2, 702), COLORS["gold"], "midbottom")
 
     def draw_stage_select(self) -> None:
         # Render the highlighted arena in the background to make the choice visual.
@@ -1167,7 +1207,7 @@ class Game:
         self.draw_message()
         pygame.display.flip()
 
-    async def run(self) -> None:
+    def run(self) -> None:
         while self.running:
             dt = self.clock.tick(FPS) / 1000.0
             for event in pygame.event.get():
@@ -1177,10 +1217,8 @@ class Game:
                     self.handle_keydown(event.key)
             self.update(dt)
             self.draw()
-            # Required by pygbag: yields control to the browser after each frame.
-            await asyncio.sleep(0)
         pygame.quit()
 
 
 if __name__ == "__main__":
-    asyncio.run(Game().run())
+    Game().run()
