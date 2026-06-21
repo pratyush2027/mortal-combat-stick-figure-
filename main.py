@@ -11,6 +11,7 @@ Run:
 
 from __future__ import annotations
 
+import asyncio
 import math
 import random
 from collections import deque
@@ -1166,7 +1167,7 @@ class Game:
         self.draw_message()
         pygame.display.flip()
 
-    def run(self) -> None:
+    async def run(self) -> None:
         while self.running:
             dt = self.clock.tick(FPS) / 1000.0
             for event in pygame.event.get():
@@ -1176,8 +1177,10 @@ class Game:
                     self.handle_keydown(event.key)
             self.update(dt)
             self.draw()
+            # Required by pygbag: yields control to the browser after each frame.
+            await asyncio.sleep(0)
         pygame.quit()
 
 
 if __name__ == "__main__":
-    Game().run()
+    asyncio.run(Game().run())
