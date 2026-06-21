@@ -10,6 +10,7 @@ Run:
 """
 
 from __future__ import annotations
+import asyncio
 
 import math
 import random
@@ -800,6 +801,38 @@ class Game:
                 # R/K always mean kick. Specials stay available only to the CPU in this beginner-friendly build.
                 fighter.start_attack("lk", now)
 
+    def handle_mouse_down(self, pos: Tuple[int, int]) -> None:
+        """Browser-friendly menu clicks for Pygbag / GitHub Pages."""
+        x, y = pos
+
+        if self.mode == "title":
+            # Large title-menu targets: clicking also gives the browser canvas focus.
+            cpu_button = pygame.Rect(WIDTH // 2 - 350, 132, 325, 78)
+            local_button = pygame.Rect(WIDTH // 2 + 25, 132, 325, 78)
+            if cpu_button.collidepoint(x, y):
+                self.pending_vs_cpu = True
+                self.stage_index = 0
+                self.mode = "stage_select"
+            elif local_button.collidepoint(x, y):
+                self.pending_vs_cpu = False
+                self.stage_index = 0
+                self.mode = "stage_select"
+            return
+
+        if self.mode == "stage_select":
+            card_w, card_h = 510, 82
+            top = 206
+            for index in range(len(STAGES)):
+                rect = pygame.Rect(WIDTH // 2 - card_w // 2, top + index * 94, card_w, card_h)
+                if rect.collidepoint(x, y):
+                    self.stage_index = index
+                    self.start_match(self.pending_vs_cpu, index)
+                    return
+            return
+
+        if self.mode == "match_end":
+            self.mode = "title"
+
     def try_grab(self, attacker: Fighter) -> None:
         defender = self.p2 if attacker is self.p1 else self.p1
         if attacker.attack or attacker.stun > 0 or not attacker.grounded or not defender.grounded:
@@ -1121,7 +1154,7 @@ class Game:
         draw_text(self.screen, self.fonts["small"], "VS CPU", (WIDTH // 2 - 205, 171), COLORS["text"], "midleft")
         self.draw_keycap("2", (WIDTH // 2 + 75, 171), COLORS["magenta"])
         draw_text(self.screen, self.fonts["small"], "LOCAL TWO PLAYER", (WIDTH // 2 + 120, 171), COLORS["text"], "midleft")
-        draw_text(self.screen, self.fonts["tiny"], "PRESS 1 OR 2 TO CHOOSE MODE  •  ESC TO EXIT", (WIDTH // 2, 218), COLORS["muted"], "midtop")
+        draw_text(self.screen, self.fonts["tiny"], "CLICK A MODE OR PRESS 1 / 2  •  CLICK THE GAME ONCE FOR KEYBOARD INPUT", (WIDTH // 2, 218), COLORS["muted"], "midtop")
 
         draw_text(self.screen, self.fonts["medium"], "KEYBOARD CONFIG", (WIDTH // 2, 244), COLORS["purple"], "midtop", True)
         draw_text(self.screen, self.fonts["tiny"], "ALL ATTACK KEYS ARE DIRECT: NO COMBO INPUTS REQUIRED", (WIDTH // 2, 279), COLORS["muted"], "midtop")
@@ -1147,7 +1180,7 @@ class Game:
         draw_text(self.screen, self.fonts["large"], "SELECT ARENA", (WIDTH // 2, 70), COLORS["gold"], "midtop", True)
         mode_text = "VS CPU" if self.pending_vs_cpu else "LOCAL TWO PLAYER"
         draw_text(self.screen, self.fonts["small"], mode_text, (WIDTH // 2, 134), COLORS["cyan"], "midtop")
-        draw_text(self.screen, self.fonts["tiny"], "LEFT / RIGHT to browse • 1–4 to jump • ENTER to confirm • ESC to return",
+        draw_text(self.screen, self.fonts["tiny"], "CLICK AN ARENA TO START • OR USE LEFT / RIGHT + ENTER • ESC TO RETURN",
                   (WIDTH // 2, 163), COLORS["muted"], "midtop")
 
         card_w, card_h = 510, 82
@@ -1207,7 +1240,7 @@ class Game:
         self.draw_message()
         pygame.display.flip()
 
-    def run(self) -> None:
+    async def run(self) -> None:
         while self.running:
             dt = self.clock.tick(FPS) / 1000.0
             for event in pygame.event.get():
@@ -1215,10 +1248,17 @@ class Game:
                     self.running = False
                 elif event.type == pygame.KEYDOWN:
                     self.handle_keydown(event.key)
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    self.handle_mouse_down(event.pos)
+                elif event.type == pygame.FINGERDOWN:
+                    # Touch input coordinates are normalized (0.0–1.0).
+                    self.handle_mouse_down((int(event.x * WIDTH), int(event.y * HEIGHT)))
             self.update(dt)
             self.draw()
+            # Essential for Pygbag: return control to the browser each frame.
+            await asyncio.sleep(0)
         pygame.quit()
 
 
 if __name__ == "__main__":
-    Game().run()
+    asyncio.run(Game().run())
